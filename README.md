@@ -1,5 +1,6 @@
 # check_for_sound.sh
  This script turns a RaspberryPis GPIO on and off if sound is playing or not.
+ Tested with Kernel 6.1
 
 
 ## check_for_sound.service
