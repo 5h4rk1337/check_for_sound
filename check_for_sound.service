@@ -3,7 +3,7 @@ Description= Checks for sound and turns GPIO 18 on if.
 
 [Service]
 Type=simple
-ExecStart=/home/pi/speaker_control/check_for_sound.sh
+ExecStart=/usr/local/bin/check_for_sound.sh
 
 [Install]
 WantedBy=multi-user.target
