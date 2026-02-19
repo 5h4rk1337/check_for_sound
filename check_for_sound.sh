@@ -1,48 +1,83 @@
 #!/bin/bash
+# This script is used to check if sound is playing and control the speaker on/off by GPIO pin 18
 
-if [ ! -d "/sys/class/gpio/gpio18" ]; then
-	echo "18" > /sys/class/gpio/export
-	echo "out" > /sys/class/gpio/gpio18/direction
+# Check if gpiod package is installed
+if [ ! -f "/usr/bin/gpioset" ]; then
+	echo "ERROR: Please install gpiod package first"
 fi
 
+# Verbose/debug flag
+VERBOSE=0
+while getopts "v" opt; do
+	case "$opt" in
+		v) VERBOSE=1 ;;
+	esac
+done
 
+dbg() {
+	if [ "$VERBOSE" -eq 1 ]; then
+		echo "$@"
+	fi
+}
 
+# MARK: Functions
+# Check if sound is playing. Return 1 if sound is on, otherwise return 0
+check_sound() {
+	status=`head -n 1 /proc/asound/card1/pcm0p/sub0/status`
+	if [ "$status" == "closed" ]; then
+		echo "0"
+	else
+		echo "1"
+	fi
+}
 
-DIR='/proc/asound/card1/pcm0p/sub0/status'
-GPIO_ON='echo "1" > /sys/class/gpio/gpio18/value'
-GPIO_OFF='echo "0" > /sys/class/gpio/gpio18/value'
+# Set GPIO pin 18 to high
+gpio_on() {
+		gpioset -c gpiochip0 18=1 &
+		GPIO_PID=$!
+		echo "Turn on speaker, GPIO PID: $GPIO_PID"
+}
 
-status="closed"
-check_gpio=""
-i=0
-i_target=57
+# Set GPIO pin 18 to low
+gpio_off() {
+		gpioset -c gpiochip0 18=0 &
+		GPIO_PID=$!
+		echo "Turn off speaker, GPIO PID: $GPIO_PID"
+}
 
+# Get GPIO pin 18 status
+gpio_status() {
+	gpioget --numeric -c gpiochip0 18
+}
+
+# MARK: Main loop
+delay=60
+timer=0
+step=2
+GPIO_PID=""
+dbg "GPIO status:$(gpio_status)"
 while true
 do
-    current_status=`head -n 1 $DIR`
-    check_gpio=`cat /sys/class/gpio/gpio18/value`
+	current_status=$(check_sound) # save the current status of sound
 
-    if [ "$status" == "$current_status" ]; then
-#	echo ">>> No sound is playing"			#debug
-	if [ "$i" == "$i_target" ]; then
-		if [ "$check_gpio" !=  "0" ]; then
-#			echo ">>> turn Speaker off"	#debug
-			eval "$GPIO_OFF"
-		fi
-	else
-		i=$[$i+1]
+	if [[ "$current_status" == "1" && "$GPIO_PID" == "" ]]; then # if sound is on, turn on the speaker and reset the timer
+		#$gpio_status=$()
+		gpio_on
+		timer=$delay
 	fi
-#    echo i is $i					#debug
-    sleep 1
 
-    else
-#    echo ">>> Sound is playing"			#debug
-	if [ "$check_gpio" !=  "1" ]; then
-#	echo ">>> turn Speaker on"			#debug
-	eval "$GPIO_ON"
+	if [[ "$current_status" == "0" && "$timer" -le 0 && "$GPIO_PID" != "" ]]; then # if sound is off and timer is expired, turn off the speaker
+		kill $GPIO_PID 2>/dev/null || true
+		gpio_off
+		kill $GPIO_PID 2>/dev/null || true
+		sleep 0.1 # wait for the GPIO command to take effect
+		GPIO_PID=""
+		dbg "GPIO status:$(gpio_status)"
 	fi
-    i=0
-    sleep 5
-    fi
-
+	
+	sleep $step
+	if [[ "$current_status" == "0" && "$timer" -gt 0 ]]; then
+		timer=$[$timer-$step] # decrease the timer by step
+	fi
+	dbg "Sound status: $current_status, Timer: $timer, GPIO PID: $GPIO_PID"
 done
