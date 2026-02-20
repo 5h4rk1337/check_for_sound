@@ -26,7 +26,7 @@ check_sound() {
 	status=`head -n 1 /proc/asound/card2/pcm0p/sub0/status`
 	if [ "$status" == "closed" ]; then
 		echo "0"
-	else
+	elif [ "$status" == "state: RUNNING" ]; then
 		echo "1"
 	fi
 }
