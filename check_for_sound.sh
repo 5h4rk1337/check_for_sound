@@ -23,10 +23,10 @@ dbg() {
 # MARK: Functions
 # Check if sound is playing. Return 1 if sound is on, otherwise return 0
 check_sound() {
-	status=`head -n 1 /proc/asound/card1/pcm0p/sub0/status`
+	status=`head -n 1 /proc/asound/card2/pcm0p/sub0/status`
 	if [ "$status" == "closed" ]; then
 		echo "0"
-	else
+	elif [ "$status" == "state: RUNNING" ]; then
 		echo "1"
 	fi
 }
@@ -49,6 +49,17 @@ gpio_off() {
 gpio_status() {
 	gpioget --numeric -c gpiochip0 18
 }
+
+# MARK: Wait for sound card to be ready
+ready=0
+while [ $ready -eq 0 ]; do
+	if [ -f "/proc/asound/card2/pcm0p/sub0/status" ]; then
+		ready=1
+	else
+		echo "Waiting for sound card to be ready..."
+		sleep 3
+	fi
+done
 
 # MARK: Main loop
 delay=60
