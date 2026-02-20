@@ -23,7 +23,7 @@ dbg() {
 # MARK: Functions
 # Check if sound is playing. Return 1 if sound is on, otherwise return 0
 check_sound() {
-	status=`head -n 1 /proc/asound/card1/pcm0p/sub0/status`
+	status=`head -n 1 /proc/asound/card2/pcm0p/sub0/status`
 	if [ "$status" == "closed" ]; then
 		echo "0"
 	else
