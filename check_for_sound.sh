@@ -50,6 +50,17 @@ gpio_status() {
 	gpioget --numeric -c gpiochip0 18
 }
 
+# Mark: Wait for sound card to be ready
+ready=0
+while [ $ready -eq 0 ]; do
+	if [ -f "/proc/asound/card2/pcm0p/sub0/status" ]; then
+		ready=1
+	else
+		echo "Waiting for sound card to be ready..."
+		sleep 3
+	fi
+done
+
 # MARK: Main loop
 delay=60
 timer=0
